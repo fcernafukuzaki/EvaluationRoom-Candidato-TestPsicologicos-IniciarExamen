@@ -9,9 +9,9 @@ autorizador_service = AutorizadorService()
 
 class IniciarExamenController(Resource):
 
-    def get(self, email_candidato):
-        token = request.headers['Authorization']
-        valido = autorizador_service.validar_token(token)
+    def get(self):
+        email_candidato = request.headers['Authorization']
+        valido = autorizador_service.validar_token(email_candidato)
         if valido:
             return iniciar_examen_service.iniciar_examen(email_candidato)
         return {'mensaje': 'Operación no valida.'}, 403
