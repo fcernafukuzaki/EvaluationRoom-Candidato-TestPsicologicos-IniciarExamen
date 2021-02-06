@@ -13,3 +13,6 @@ marshmallow
 marshmallow-sqlalchemy
 flask-cors
 gunicorn
+urllib3
+json
+ast
