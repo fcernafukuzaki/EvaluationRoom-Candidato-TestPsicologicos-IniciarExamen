@@ -19,4 +19,4 @@ class TestPsicologicoInstrucciones(db.Model):
     
 class TestPsicologicoInstruccionesSchema(ma.Schema):
     class Meta:
-        fields = ('idtestpsicologico', 'idparte', 'instrucciones', 'alternativa_maxima_seleccion', 'duracion_segundos')
+        fields = ('idtestpsicologico', 'idparte', 'instrucciones', 'alternativamaxseleccion', 'duracion')
