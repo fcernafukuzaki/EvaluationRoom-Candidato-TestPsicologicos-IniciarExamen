@@ -163,7 +163,8 @@ class IniciarExamenService():
                 idtestpsicologico = int(candidato_respuesta.idtestpsicologico)
                 idparte = int(candidato_respuesta.idparte)
                 candidato_respuestas_idtestpsicologico_idparte_lista.add('{}.{}'.format(idtestpsicologico, idparte))
-            candidato_respuestas_idtestpsicologico_idparte_lista = list(candidato_respuestas_idtestpsicologico_idparte_lista).sort()
+            candidato_respuestas_idtestpsicologico_idparte_lista = list(candidato_respuestas_idtestpsicologico_idparte_lista)
+            candidato_respuestas_idtestpsicologico_idparte_lista.sort()
 
             print('Lista de respuestas del candidato {}: {}'.format(idcandidato, candidato_respuestas_idtestpsicologico_idparte_lista))
             flag, testpsicologico_instrucciones = self.obtener_instrucciones(id_testpsicologicos, candidato_respuestas_idtestpsicologico_idparte_lista)
