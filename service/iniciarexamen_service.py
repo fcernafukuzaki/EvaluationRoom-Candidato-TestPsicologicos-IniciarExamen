@@ -157,12 +157,13 @@ class IniciarExamenService():
 
         if candidato_respuestas.count() > 0:
             print('El candidato {} posee preguntas pendientes para los test {}'.format(idcandidato, id_testpsicologicos))
-            candidato_respuestas_idtestpsicologico_idparte_lista = []
+            candidato_respuestas_idtestpsicologico_idparte_lista = set()
             for candidato_respuesta in candidato_respuestas:
                 #print('Respuestas de un candidato: {}'.format(candidato_respuesta))
                 idtestpsicologico = int(candidato_respuesta.idtestpsicologico)
                 idparte = int(candidato_respuesta.idparte)
-                candidato_respuestas_idtestpsicologico_idparte_lista.append('{}.{}'.format(idtestpsicologico, idparte))
+                candidato_respuestas_idtestpsicologico_idparte_lista.add('{}.{}'.format(idtestpsicologico, idparte))
+            candidato_respuestas_idtestpsicologico_idparte_lista = list(candidato_respuestas_idtestpsicologico_idparte_lista)
 
             print('Lista de respuestas del candidato {}: {}'.format(idcandidato, candidato_respuestas_idtestpsicologico_idparte_lista))
             flag, testpsicologico_instrucciones = self.obtener_instrucciones(id_testpsicologicos, candidato_respuestas_idtestpsicologico_idparte_lista)
