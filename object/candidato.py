@@ -1,4 +1,5 @@
 from configs.flask_config import db, ma
+from sqlalchemy import func
 from object.candidato_testpsicologico import CandidatoTestPsicologico, CandidatoTestPsicologicoSchema
 from object.candidato_telefono import CandidatoTelefono, CandidatoTelefonoSchema
 from object.candidato_direccion import CandidatoDireccion, CandidatoDireccionSchema
@@ -32,13 +33,38 @@ class Candidato(db.Model):
         self.correoelectronico = correoelectronico
         self.selfregistration = selfregistration
 
+class CandidatoInfo():
+
+    def candidato_info(idcandidato):
+        return db.session.query(
+            Candidato.idcandidato,
+            Candidato.nombre,
+            Candidato.apellidopaterno,
+            Candidato.apellidomaterno,
+            Candidato.correoelectronico,
+            Candidato.selfregistration,
+            Candidato.fechanacimiento,
+            func.concat(Candidato.nombre, ' ', Candidato.apellidopaterno, ' ', Candidato.apellidomaterno).label('nombre_completo'),
+            func.count(CandidatoTestPsicologico.idcandidato).label('cantidad_pruebas_asignadas')
+        ).filter(Candidato.idcandidato == idcandidato
+        ).outerjoin(CandidatoTestPsicologico, Candidato.idcandidato == CandidatoTestPsicologico.idcandidato
+        ).group_by(Candidato.idcandidato,
+            Candidato.nombre,
+            Candidato.apellidopaterno,
+            Candidato.apellidomaterno,
+            Candidato.correoelectronico,
+            Candidato.selfregistration,
+            Candidato.fechanacimiento
+        ).first()
 
 class CandidatoSchema(ma.Schema):
     class Meta:
         fields = ('idcandidato', 'nombre', 'apellidopaterno', 'apellidomaterno', 'fechanacimiento', 'correoelectronico',
                   'selfregistration',
-                  'telefonos', 'direcciones', 'testpsicologicos')
+                  'nombre_completo', 'cantidad_pruebas_asignadas',
+                  #'telefonos', 'direcciones', 
+                  'testpsicologicos')
 
-    telefonos = ma.Nested(CandidatoTelefonoSchema, many=True)
-    direcciones = ma.Nested(CandidatoDireccionSchema, many=True)
+    #telefonos = ma.Nested(CandidatoTelefonoSchema, many=True)
+    #direcciones = ma.Nested(CandidatoDireccionSchema, many=True)
     testpsicologicos = ma.Nested(CandidatoTestPsicologicoSchema, many=True)

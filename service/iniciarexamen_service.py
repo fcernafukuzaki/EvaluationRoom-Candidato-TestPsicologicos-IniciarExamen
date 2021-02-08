@@ -1,7 +1,7 @@
 from flask import jsonify
 from configs.flask_config import db
 from sqlalchemy import func
-from object.candidato import Candidato, CandidatoSchema
+from object.candidato import Candidato, CandidatoInfo, CandidatoSchema
 from object.candidato_testpsicologico import CandidatoTestPsicologico
 from object.testpsicologico_instrucciones import TestPsicologicoInstrucciones, TestPsicologicoInstruccionesSchema
 from object.mensaje_procesoseleccion_candidato import MensajeProcesoseleccionCandidato
@@ -23,8 +23,8 @@ class IniciarExamenService():
         if email_valido == False:
             return {'mensaje': 'No existe candidato.'}, 404
 
-        candidato = self.obtener_candidato(idcandidato, email)
-
+        candidato, candidato_info = self.obtener_candidato(idcandidato, email)
+        
         flag_autoregistro = self.valida_autoregistro(email, candidato.selfregistration)
         #if flag_autoregistro == False:
         #    return candidato_schema.jsonify(candidato)
@@ -43,7 +43,8 @@ class IniciarExamenService():
         if flag:
             resultado_preguntas_pendientes = preguntas_pendientes
             resultado_testpsicologicos_instrucciones = testpsicologicos_instrucciones
-            return {'mensaje_bienvenida': mensaje_bienvenida, 'testpsicologicos_instrucciones': testpsicologico_instrucciones_schema.dump(resultado_testpsicologicos_instrucciones), 'preguntas_pendientes': testpsicologico_preguntas_schema.dump(resultado_preguntas_pendientes) }, 200
+            return {'mensaje_bienvenida': mensaje_bienvenida, 'candidato': candidato_schema.dump(candidato_info), 'testpsicologicos_instrucciones': testpsicologico_instrucciones_schema.dump(resultado_testpsicologicos_instrucciones), 'preguntas_pendientes': testpsicologico_preguntas_schema.dump(resultado_preguntas_pendientes) }, 200
+            #return candidato_schema.jsonify(candidato_info)
         return {'mensaje': 'Error al recuperar las instrucciones de los test psicológicos.'}, 500
 
     def valida_email_candidato(self, email):
@@ -69,11 +70,12 @@ class IniciarExamenService():
 
     def obtener_candidato(self, idcandidato, email):
         candidato = Candidato.query.get(idcandidato)
+        candidato_info = CandidatoInfo.candidato_info(idcandidato)
         if candidato:
             print('Se encontró candidato con el identificador {}'.format(email))
-            return candidato
+            return candidato, candidato_info
         print('No existe candidato con el identificador {}'.format(email))
-        return None
+        return None, None
 
     def obtener_testpsicologicos_pendientes(self, idcandidato, email):
         testpsicologicos_pendientes = db.session.query(
