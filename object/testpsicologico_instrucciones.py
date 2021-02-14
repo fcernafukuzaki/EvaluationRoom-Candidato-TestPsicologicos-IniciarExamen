@@ -9,14 +9,16 @@ class TestPsicologicoInstrucciones(db.Model):
     instrucciones = db.Column(db.String())
     alternativamaxseleccion = db.Column(db.Integer())
     duracion = db.Column(db.Integer)
+    cantidadpreguntas = db.Column(db.Integer)
 
-    def __init__(self, idtestpsicologico, idparte=1, instrucciones=None, alternativa_maxima_seleccion=1, duracion_segundos=0):
+    def __init__(self, idtestpsicologico, idparte=1, instrucciones=None, alternativa_maxima_seleccion=1, duracion_segundos=0, cantidadpreguntas=0):
         self.idtestpsicologico = idtestpsicologico
         self.idparte = idparte
         self.instrucciones = instrucciones
         self.alternativamaxseleccion = alternativa_maxima_seleccion
         self.duracion = duracion_segundos
+        self.cantidadpreguntas = cantidadpreguntas
     
 class TestPsicologicoInstruccionesSchema(ma.Schema):
     class Meta:
-        fields = ('idtestpsicologico', 'idparte', 'instrucciones', 'alternativamaxseleccion', 'duracion')
+        fields = ('idtestpsicologico', 'idparte', 'instrucciones', 'alternativamaxseleccion', 'duracion', 'cantidadpreguntas')

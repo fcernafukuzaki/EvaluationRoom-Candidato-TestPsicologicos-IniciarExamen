@@ -1,23 +1,26 @@
 from flask import jsonify
 from configs.flask_config import db
 from sqlalchemy import func
+from sqlalchemy import desc
 from object.candidato import Candidato, CandidatoInfo, CandidatoSchema
-from object.candidato_testpsicologico import CandidatoTestPsicologico
+from object.candidato_testpsicologico import CandidatoTestPsicologico, CandidatoTestPsicologicoSchema
 from object.testpsicologico_instrucciones import TestPsicologicoInstrucciones, TestPsicologicoInstruccionesSchema
 from object.mensaje_procesoseleccion_candidato import MensajeProcesoseleccionCandidato
 from object.testpsicologico_preguntas import TestPsicologicoPreguntas, TestPsicologicoPreguntasSchema
 from object.candidato_testpsicologicodetalle import CandidatoTestPsicologicoDetalle
+from object.reclutador_notificacion import ReclutadorNotificacion
 import json
 import ast
 import urllib3
 
 candidato_schema = CandidatoSchema()
+candidato_testpsicologico_schema = CandidatoTestPsicologicoSchema(many=True)
 testpsicologico_instrucciones_schema = TestPsicologicoInstruccionesSchema(many=True)
 testpsicologico_preguntas_schema = TestPsicologicoPreguntasSchema(many=True)
 
 class IniciarExamenService():
 
-    def iniciar_examen(self, email):
+    def iniciar_examen(self, email, lista_test_psicologicos):
         email_valido, idcandidato = self.valida_email_candidato(email)
         
         if email_valido == False:
@@ -32,18 +35,26 @@ class IniciarExamenService():
         flag, testpsicologicos_pendientes = self.obtener_testpsicologicos_pendientes(idcandidato, email)
         if flag == False:
             flag, mensaje = self.obtener_mensaje_felicitaciones(candidato.nombre)
-            return {'mensaje': mensaje}, 202
+            reclutador_notificado = False
+            if len(lista_test_psicologicos) > 0:
+                reclutador_notificado = self.valida_lista_test_psicologicos(idcandidato, lista_test_psicologicos)
+            return {'mensaje': mensaje,
+                    'reclutador_notificado': reclutador_notificado}, 202
 
         testpsicologicos_lista = []
         for test in candidato.testpsicologicos:
             testpsicologicos_lista.append(test.idtestpsicologico)
 
         flag, mensaje_bienvenida = self.obtener_mensaje_bienvenida(candidato.nombre)
-        flag, preguntas_pendientes, testpsicologicos_instrucciones = self.obtener_preguntas_pendientes(candidato.idcandidato, testpsicologicos_lista)
+        flag, preguntas_pendientes, testpsicologicos_instrucciones, testpsicologicos_asignados = self.obtener_preguntas_pendientes(candidato.idcandidato, testpsicologicos_lista)
         if flag:
             resultado_preguntas_pendientes = preguntas_pendientes
             resultado_testpsicologicos_instrucciones = testpsicologicos_instrucciones
-            return {'mensaje_bienvenida': mensaje_bienvenida, 'candidato': candidato_schema.dump(candidato_info), 'testpsicologicos_instrucciones': testpsicologico_instrucciones_schema.dump(resultado_testpsicologicos_instrucciones), 'preguntas_pendientes': testpsicologico_preguntas_schema.dump(resultado_preguntas_pendientes) }, 200
+            return {'mensaje_bienvenida': mensaje_bienvenida, 
+                    'candidato': candidato_schema.dump(candidato_info), 
+                    'testpsicologicos_asignados': candidato_testpsicologico_schema.dump(testpsicologicos_asignados),
+                    'testpsicologicos_instrucciones': testpsicologico_instrucciones_schema.dump(resultado_testpsicologicos_instrucciones), 
+                    'preguntas_pendientes': testpsicologico_preguntas_schema.dump(resultado_preguntas_pendientes) }, 200
             #return candidato_schema.jsonify(candidato_info)
         return {'mensaje': 'Error al recuperar las instrucciones de los test psicológicos.'}, 500
 
@@ -153,9 +164,14 @@ class IniciarExamenService():
                                     ).filter(
                                         CandidatoTestPsicologicoDetalle.idcandidato == idcandidato
                                     ).order_by(CandidatoTestPsicologicoDetalle.idtestpsicologico, CandidatoTestPsicologicoDetalle.idparte, CandidatoTestPsicologicoDetalle.idpregunta)
+            
+            testpsicologicos_asignados = db.session.query(
+                                                CandidatoTestPsicologico
+                                            ).filter(CandidatoTestPsicologico.idcandidato==idcandidato
+                                            ).order_by(CandidatoTestPsicologico.idtestpsicologico)
         except:
             print('Error al recuperar las respuestas del candidato {}'.format(idcandidato))
-            return False, '', None
+            return False, '', None, None
 
         if candidato_respuestas.count() > 0:
             print('El candidato {} posee preguntas pendientes para los test {}'.format(idcandidato, id_testpsicologicos))
@@ -171,7 +187,7 @@ class IniciarExamenService():
             print('Lista de respuestas del candidato {}: {}'.format(idcandidato, candidato_respuestas_idtestpsicologico_idparte_lista))
             flag, testpsicologico_instrucciones = self.obtener_instrucciones(id_testpsicologicos, candidato_respuestas_idtestpsicologico_idparte_lista)
             if flag == False:
-                return False, 'No hay instrucciones para el test psicológico.', None
+                return False, 'No hay instrucciones para el test psicológico.', None, None
 
             try:
                 response = db.session.query(
@@ -181,14 +197,14 @@ class IniciarExamenService():
                             ).order_by(TestPsicologicoPreguntas.idtestpsicologico, TestPsicologicoPreguntas.idparte, TestPsicologicoPreguntas.idpregunta)
             except:
                 print('Error al recuperar las preguntas del test psicológico.')
-                return False, 'Error al recuperar las preguntas del test psicológico.', None
+                return False, 'Error al recuperar las preguntas del test psicológico.', None, None
             
             else:
-                return True, response, testpsicologico_instrucciones
+                return True, response, testpsicologico_instrucciones, testpsicologicos_asignados
         else:
             flag, testpsicologico_instrucciones = self.obtener_instrucciones(id_testpsicologicos)
             if flag == False:
-                return False, 'No hay instrucciones para el test psicológico.', None
+                return False, 'No hay instrucciones para el test psicológico.', None, None
 
             try:
                 response = db.session.query(
@@ -198,6 +214,32 @@ class IniciarExamenService():
                             ).order_by(TestPsicologicoPreguntas.idtestpsicologico, TestPsicologicoPreguntas.idparte, TestPsicologicoPreguntas.idpregunta)
             except:
                 print('Error al recuperar las preguntas del test psicológico.')
-                return False, 'Error al recuperar las preguntas del test psicológico.', None
+                return False, 'Error al recuperar las preguntas del test psicológico.', None, None
             else:
-                return True, response, testpsicologico_instrucciones
+                return True, response, testpsicologico_instrucciones, testpsicologicos_asignados
+    
+    def valida_lista_test_psicologicos(self, idcandidato, lista_test_psicologicos):
+        try:
+            reclutador_notificacion = db.session.query(
+                                        ReclutadorNotificacion
+                                    ).filter(ReclutadorNotificacion.idcandidato==idcandidato
+                                    ).order_by(desc(ReclutadorNotificacion.fechanotificacion))
+            if reclutador_notificacion.count() > 0:
+                print('Se encontró notificaciones para el candidato {}'.format(idcandidato))
+                reclutador_notificacion_ultimo = reclutador_notificacion.first()
+                print('La lista de test recibida del candidato {} es {}'.format(idcandidato, lista_test_psicologicos))
+                print('La lista de test obtenida del candidato {} es {}'.format(idcandidato, reclutador_notificacion_ultimo.testpsicologico))
+                if lista_test_psicologicos == reclutador_notificacion_ultimo.testpsicologico:
+                    print('Las listas de test psicológicos son iguales.')
+                    return False
+            print('Las listas de test psicológicos son diferentes')
+            
+            new_reclutador_notificacion = ReclutadorNotificacion(idcandidato, json.dumps(lista_test_psicologicos), func.now())
+            db.session.add(new_reclutador_notificacion)
+            db.session.commit()
+
+            return True
+        except AssertionError as error:
+            print(error)
+            print('Error al validar lista de test psicologicos.')
+            return False
