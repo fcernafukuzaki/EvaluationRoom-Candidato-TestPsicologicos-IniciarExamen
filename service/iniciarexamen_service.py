@@ -55,7 +55,6 @@ class IniciarExamenService():
                     'testpsicologicos_asignados': candidato_testpsicologico_schema.dump(testpsicologicos_asignados),
                     'testpsicologicos_instrucciones': testpsicologico_instrucciones_schema.dump(resultado_testpsicologicos_instrucciones), 
                     'preguntas_pendientes': testpsicologico_preguntas_schema.dump(resultado_preguntas_pendientes) }, 200
-            #return candidato_schema.jsonify(candidato_info)
         return {'mensaje': 'Error al recuperar las instrucciones de los test psicológicos.'}, 500
 
     def valida_email_candidato(self, email):
@@ -109,8 +108,9 @@ class IniciarExamenService():
                 print(' Se consulta la parte de los test psicológicos.')
                 testpsicologico_instrucciones = db.session.query(
                                                     TestPsicologicoInstrucciones
-                                                ).filter(TestPsicologicoInstrucciones.idtestpsicologico.in_((idtestpsicologicos_lista)),
-                                                    func.concat(TestPsicologicoInstrucciones.idtestpsicologico, '.', TestPsicologicoInstrucciones.idparte).notin_((idtestpsicologicos_idparte_lista))
+                                                ).filter(
+                                                    func.concat(TestPsicologicoInstrucciones.idtestpsicologico, '.', TestPsicologicoInstrucciones.idparte).in_(
+                                                        (idtestpsicologicos_idparte_lista))
                                                 ).order_by(TestPsicologicoInstrucciones.idtestpsicologico, TestPsicologicoInstrucciones.idparte)
             else:
                 print(' Se consulta los test psicológicos. No posee partes.')
@@ -159,17 +159,93 @@ class IniciarExamenService():
 
     def obtener_preguntas_pendientes(self, idcandidato, id_testpsicologicos):
         try:
-            candidato_respuestas = db.session.query(
-                                        CandidatoTestPsicologicoDetalle
+            '''
+            SELECT idtestpsicologico, idparte, idpregunta, enunciado, alternativa
+            FROM evaluationroom.testpsicologicopregunta
+            WHERE idtestpsicologico IN (SELECT idtestpsicologico 
+                                        FROM evaluationroom.candidatotest 
+                                        WHERE idcandidato = 1)
+            AND CONCAT(idtestpsicologico, '.', idparte, '.', idpregunta) NOT IN (
+                                        SELECT CONCAT(idtestpsicologico, '.', idparte, '.', idpregunta) 
+                                        FROM evaluationroom.candidatotestdetalle 
+                                        WHERE idcandidato = 1
+                                        UNION 
+                                        SELECT CONCAT(ctd.idtestpsicologico, '.', ctd.idparte, '.', ctd.idpregunta) 
+                                        FROM evaluationroom.testpsicologicopregunta ctd
+                                        INNER JOIN evaluationroom.testpsicologicoparte_test tp 
+                                            ON ctd.idtestpsicologico = tp.idtestpsicologico AND ctd.idparte = tp.idparte
+                                        WHERE CONCAT(ctd.idtestpsicologico, '.', ctd.idparte) IN (
+                                            SELECT DISTINCT(CONCAT(tp.idtestpsicologico, '.', tp.idparte))
+                                            FROM evaluationroom.candidatotestdetalle ct
+                                            INNER JOIN evaluationroom.testpsicologicoparte_test tp
+                                                ON ct.idtestpsicologico = tp.idtestpsicologico AND ct.idparte = tp.idparte
+                                            WHERE ct.idcandidato = 1
+                                            )
+                                        AND tp.duracion > 0
+                                        AND CONCAT(ctd.idtestpsicologico, '.', ctd.idparte, '.', ctd.idpregunta) NOT IN (
+                                            SELECT CONCAT(idtestpsicologico, '.', idparte, '.', idpregunta) 
+                                            FROM evaluationroom.candidatotestdetalle 
+                                            WHERE idcandidato = 1)
+            )
+            ORDER BY idtestpsicologico, idparte, idpregunta;
+            '''
+            _subquery_testpsicologicos_asignados = db.session.query(
+                                CandidatoTestPsicologico.idtestpsicologico
+                            ).filter(
+                                CandidatoTestPsicologico.idcandidato==idcandidato
+                            )
+            
+            _subquery_preguntas_respondidas = db.session.query(
+                                func.concat(CandidatoTestPsicologicoDetalle.idtestpsicologico, '.', CandidatoTestPsicologicoDetalle.idparte, '.', CandidatoTestPsicologicoDetalle.idpregunta)
+                            ).filter(
+                                CandidatoTestPsicologicoDetalle.idcandidato==idcandidato
+                            )
+            
+            _subquery_preguntas_no_respondidas_por_falta_tiempo = db.session.query(
+                                func.concat(TestPsicologicoPreguntas.idtestpsicologico, '.', TestPsicologicoPreguntas.idparte, '.', TestPsicologicoPreguntas.idpregunta)
+                            ).outerjoin(TestPsicologicoInstrucciones, 
+                                TestPsicologicoInstrucciones.idtestpsicologico==TestPsicologicoPreguntas.idtestpsicologico
+                            ).filter(
+                                TestPsicologicoInstrucciones.idparte==TestPsicologicoPreguntas.idparte, # JOIN
+                                func.concat(TestPsicologicoPreguntas.idtestpsicologico, '.', TestPsicologicoPreguntas.idparte).in_(
+                                    db.session.query(
+                                        func.concat(TestPsicologicoInstrucciones.idtestpsicologico, '.', TestPsicologicoInstrucciones.idparte)
+                                    ).outerjoin(CandidatoTestPsicologicoDetalle, 
+                                        TestPsicologicoInstrucciones.idtestpsicologico==CandidatoTestPsicologicoDetalle.idtestpsicologico
                                     ).filter(
-                                        CandidatoTestPsicologicoDetalle.idcandidato == idcandidato
-                                    ).order_by(CandidatoTestPsicologicoDetalle.idtestpsicologico, CandidatoTestPsicologicoDetalle.idparte, CandidatoTestPsicologicoDetalle.idpregunta)
+                                            CandidatoTestPsicologicoDetalle.idcandidato==idcandidato,
+                                            TestPsicologicoInstrucciones.idparte==CandidatoTestPsicologicoDetalle.idparte # JOIN
+                                    ).distinct()
+                                ),
+                                TestPsicologicoInstrucciones.duracion > 0,
+                                func.concat(TestPsicologicoPreguntas.idtestpsicologico, '.', TestPsicologicoPreguntas.idparte, '.', TestPsicologicoPreguntas.idpregunta).notin_(
+                                    db.session.query(
+                                        func.concat(CandidatoTestPsicologicoDetalle.idtestpsicologico, '.', CandidatoTestPsicologicoDetalle.idparte, '.', CandidatoTestPsicologicoDetalle.idpregunta)
+                                    ).filter(CandidatoTestPsicologicoDetalle.idcandidato==idcandidato)
+                                )
+                            )
+            _subquery_preguntas_respondidas = _subquery_preguntas_respondidas.union(_subquery_preguntas_no_respondidas_por_falta_tiempo)
+
+            candidato_respuestas = db.session.query(
+                                TestPsicologicoPreguntas.idtestpsicologico,
+                                TestPsicologicoPreguntas.idparte,
+                                TestPsicologicoPreguntas.idpregunta,
+                                TestPsicologicoPreguntas.enunciado,
+                                TestPsicologicoPreguntas.alternativa
+                            ).filter(
+                                TestPsicologicoPreguntas.idtestpsicologico.in_(_subquery_testpsicologicos_asignados),
+                                func.concat(TestPsicologicoPreguntas.idtestpsicologico, '.', TestPsicologicoPreguntas.idparte, '.', TestPsicologicoPreguntas.idpregunta
+                                    ).notin_(_subquery_preguntas_respondidas)
+                            ).order_by(TestPsicologicoPreguntas.idtestpsicologico, 
+                                TestPsicologicoPreguntas.idparte, 
+                                TestPsicologicoPreguntas.idpregunta)
             
             testpsicologicos_asignados = db.session.query(
                                                 CandidatoTestPsicologico
                                             ).filter(CandidatoTestPsicologico.idcandidato==idcandidato
                                             ).order_by(CandidatoTestPsicologico.idtestpsicologico)
-        except:
+        except AssertionError as e:
+            print(e)
             print('Error al recuperar las respuestas del candidato {}'.format(idcandidato))
             return False, '', None, None
 
@@ -184,17 +260,14 @@ class IniciarExamenService():
             candidato_respuestas_idtestpsicologico_idparte_lista = list(candidato_respuestas_idtestpsicologico_idparte_lista)
             candidato_respuestas_idtestpsicologico_idparte_lista.sort()
 
+            print('Lista de partes de las preguntas pendientes del candidato {}: {}'.format(idcandidato, candidato_respuestas_idtestpsicologico_idparte_lista))
             print('Lista de respuestas del candidato {}: {}'.format(idcandidato, candidato_respuestas_idtestpsicologico_idparte_lista))
             flag, testpsicologico_instrucciones = self.obtener_instrucciones(id_testpsicologicos, candidato_respuestas_idtestpsicologico_idparte_lista)
             if flag == False:
                 return False, 'No hay instrucciones para el test psicológico.', None, None
 
             try:
-                response = db.session.query(
-                                TestPsicologicoPreguntas
-                            ).filter(
-                                func.concat(TestPsicologicoPreguntas.idtestpsicologico, '.', TestPsicologicoPreguntas.idparte).notin_(candidato_respuestas_idtestpsicologico_idparte_lista)
-                            ).order_by(TestPsicologicoPreguntas.idtestpsicologico, TestPsicologicoPreguntas.idparte, TestPsicologicoPreguntas.idpregunta)
+                response = candidato_respuestas
             except:
                 print('Error al recuperar las preguntas del test psicológico.')
                 return False, 'Error al recuperar las preguntas del test psicológico.', None, None
