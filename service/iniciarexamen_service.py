@@ -275,21 +275,7 @@ class IniciarExamenService():
             else:
                 return True, response, testpsicologico_instrucciones, testpsicologicos_asignados
         else:
-            flag, testpsicologico_instrucciones = self.obtener_instrucciones(id_testpsicologicos)
-            if flag == False:
-                return False, 'No hay instrucciones para el test psicológico.', None, None
-
-            try:
-                response = db.session.query(
-                                TestPsicologicoPreguntas
-                            ).filter(
-                                TestPsicologicoPreguntas.idtestpsicologico.in_(id_testpsicologicos)
-                            ).order_by(TestPsicologicoPreguntas.idtestpsicologico, TestPsicologicoPreguntas.idparte, TestPsicologicoPreguntas.idpregunta)
-            except:
-                print('Error al recuperar las preguntas del test psicológico.')
-                return False, 'Error al recuperar las preguntas del test psicológico.', None, None
-            else:
-                return True, response, testpsicologico_instrucciones, testpsicologicos_asignados
+            return False, 'El candidato {} no tiene preguntas pendientes.'.format(idcandidato), None, None
     
     def valida_lista_test_psicologicos(self, idcandidato, lista_test_psicologicos):
         try:
