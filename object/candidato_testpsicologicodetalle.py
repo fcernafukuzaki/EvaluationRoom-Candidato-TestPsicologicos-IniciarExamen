@@ -10,15 +10,17 @@ class CandidatoTestPsicologicoDetalle(db.Model):
     idparte = db.Column(db.Integer, primary_key=True)
     idpregunta = db.Column(db.Integer, primary_key=True)
     respuesta = db.Column(db.String())
+    fecharegistro = db.Column(db.DateTime(), primary_key=True)
 
-    def __init__(self, idcandidato, idtestpsicologico, idparte, idpregunta, respuesta):
+    def __init__(self, idcandidato, idtestpsicologico, idparte, idpregunta, respuesta, fecharegistro):
         self.idcandidato = idcandidato
         self.idtestpsicologico = idtestpsicologico
         self.idparte = idparte
         self.idpregunta = idpregunta
         self.respuesta = respuesta
+        self.fecharegistro = fecharegistro
 
 
 class CandidatoTestPsicologicoDetalleSchema(ma.Schema):
     class Meta:
-        fields = ('idcandidato', 'idtestpsicologico', 'idparte', 'idpregunta', 'respuesta')
+        fields = ('idcandidato', 'idtestpsicologico', 'idparte', 'idpregunta', 'respuesta', 'fecharegistro')

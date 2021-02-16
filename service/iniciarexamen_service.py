@@ -9,6 +9,7 @@ from object.mensaje_procesoseleccion_candidato import MensajeProcesoseleccionCan
 from object.testpsicologico_preguntas import TestPsicologicoPreguntas, TestPsicologicoPreguntasSchema
 from object.candidato_testpsicologicodetalle import CandidatoTestPsicologicoDetalle
 from object.reclutador_notificacion import ReclutadorNotificacion
+from service.validaremailcandidato_service import ValidarEmailCandidatoService
 import json
 import ast
 import urllib3
@@ -18,10 +19,12 @@ candidato_testpsicologico_schema = CandidatoTestPsicologicoSchema(many=True)
 testpsicologico_instrucciones_schema = TestPsicologicoInstruccionesSchema(many=True)
 testpsicologico_preguntas_schema = TestPsicologicoPreguntasSchema(many=True)
 
+validar_email_candidato_service = ValidarEmailCandidatoService()
+
 class IniciarExamenService():
 
     def iniciar_examen(self, email, lista_test_psicologicos):
-        email_valido, idcandidato = self.valida_email_candidato(email)
+        email_valido, idcandidato = validar_email_candidato_service.valida_email_candidato(email)
         
         if email_valido == False:
             return {'mensaje': 'No existe candidato.'}, 404
@@ -56,20 +59,6 @@ class IniciarExamenService():
                     'testpsicologicos_instrucciones': testpsicologico_instrucciones_schema.dump(resultado_testpsicologicos_instrucciones), 
                     'preguntas_pendientes': testpsicologico_preguntas_schema.dump(resultado_preguntas_pendientes) }, 200
         return {'mensaje': 'Error al recuperar las instrucciones de los test psicológicos.'}, 500
-
-    def valida_email_candidato(self, email):
-        http = urllib3.PoolManager()
-        url = 'https://api.evaluationroom.com/candidato_email_validar/'
-        response = http.request('GET',
-                                url,
-                                headers={'Content-Type': 'application/json', 'Authorization': email},
-                                retries=False)
-        print('Resultado de API: {} {}'.format(response.status, response.data))
-        if response.status == 200:
-            print('Se encontró candidato con el correo electronico {}'.format(email))
-            return True, json.loads(response.data.decode('utf-8'))['idcandidato']
-        print('No existe candidato con el correo electronico {}'.format(email))
-        return False, None
 
     def valida_autoregistro(self, email, autoregistro):
         if autoregistro:
