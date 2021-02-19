@@ -230,9 +230,14 @@ class IniciarExamenService():
                                 TestPsicologicoPreguntas.idpregunta)
             
             testpsicologicos_asignados = db.session.query(
-                                                CandidatoTestPsicologico
+                                                CandidatoTestPsicologico.idcandidato,
+                                                CandidatoTestPsicologico.idtestpsicologico,
+                                                CandidatoTestPsicologico.fechaexamen,
+                                                TestPsicologicoInstrucciones.idparte
+                                            ).outerjoin(TestPsicologicoInstrucciones, 
+                                                TestPsicologicoInstrucciones.idtestpsicologico==CandidatoTestPsicologico.idtestpsicologico
                                             ).filter(CandidatoTestPsicologico.idcandidato==idcandidato
-                                            ).order_by(CandidatoTestPsicologico.idtestpsicologico)
+                                            ).order_by(CandidatoTestPsicologico.idtestpsicologico, TestPsicologicoInstrucciones.idparte)
         except AssertionError as e:
             print(e)
             print('Error al recuperar las respuestas del candidato {}'.format(idcandidato))
@@ -264,6 +269,7 @@ class IniciarExamenService():
             else:
                 return True, response, testpsicologico_instrucciones, testpsicologicos_asignados
         else:
+            print('El candidato {} no tiene preguntas pendientes.'.format(idcandidato))
             return False, 'El candidato {} no tiene preguntas pendientes.'.format(idcandidato), None, None
     
     def valida_lista_test_psicologicos(self, idcandidato, lista_test_psicologicos):

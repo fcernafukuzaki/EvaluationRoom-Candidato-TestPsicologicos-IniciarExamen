@@ -21,6 +21,6 @@ class CandidatoTestPsicologico(db.Model):
 
 class CandidatoTestPsicologicoSchema(ma.Schema):
     class Meta:
-        fields = ('idcandidato', 'idtestpsicologico', 'fechaexamen')
+        fields = ('idcandidato', 'idtestpsicologico', 'fechaexamen', 'idparte')
     
     testpsicologicosdetalle = ma.Nested(CandidatoTestPsicologicoDetalleSchema, many=True)
