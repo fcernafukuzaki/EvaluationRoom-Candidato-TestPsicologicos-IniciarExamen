@@ -5,11 +5,11 @@ from sqlalchemy import desc
 from object.candidato import Candidato, CandidatoInfo, CandidatoSchema
 from object.candidato_testpsicologico import CandidatoTestPsicologico, CandidatoTestPsicologicoSchema
 from object.testpsicologico_instrucciones import TestPsicologicoInstrucciones, TestPsicologicoInstruccionesSchema
-from object.mensaje_procesoseleccion_candidato import MensajeProcesoseleccionCandidato
 from object.testpsicologico_preguntas import TestPsicologicoPreguntas, TestPsicologicoPreguntasSchema
 from object.candidato_testpsicologicodetalle import CandidatoTestPsicologicoDetalle
 from object.reclutador_notificacion import ReclutadorNotificacion
 from service.validaremailcandidato_service import ValidarEmailCandidatoService
+from service.mensaje_procesoseleccion_candidato_service import MensajeProcesoseleccionCandidatoService
 import json
 import ast
 import urllib3
@@ -20,6 +20,7 @@ testpsicologico_instrucciones_schema = TestPsicologicoInstruccionesSchema(many=T
 testpsicologico_preguntas_schema = TestPsicologicoPreguntasSchema(many=True)
 
 validar_email_candidato_service = ValidarEmailCandidatoService()
+mensaje_procesoseleccion_candidato_service = MensajeProcesoseleccionCandidatoService()
 
 class IniciarExamenService():
 
@@ -37,7 +38,7 @@ class IniciarExamenService():
 
         flag, testpsicologicos_pendientes = self.obtener_testpsicologicos_pendientes(idcandidato, email)
         if flag == False:
-            flag, mensaje = self.obtener_mensaje_felicitaciones(candidato.nombre)
+            flag, mensaje = mensaje_procesoseleccion_candidato_service.obtener_mensaje_felicitaciones(candidato.nombre)
             reclutador_notificado = False
             if len(lista_test_psicologicos) > 0:
                 reclutador_notificado = self.valida_lista_test_psicologicos(idcandidato, lista_test_psicologicos)
@@ -48,7 +49,7 @@ class IniciarExamenService():
         for test in candidato.testpsicologicos:
             testpsicologicos_lista.append(test.idtestpsicologico)
 
-        flag, mensaje_bienvenida = self.obtener_mensaje_bienvenida(candidato.nombre)
+        flag, mensaje_bienvenida = mensaje_procesoseleccion_candidato_service.obtener_mensaje_bienvenida(candidato.nombre)
         flag, preguntas_pendientes, testpsicologicos_instrucciones, testpsicologicos_asignados = self.obtener_preguntas_pendientes(candidato.idcandidato, testpsicologicos_lista)
         if flag:
             resultado_preguntas_pendientes = preguntas_pendientes
@@ -113,38 +114,6 @@ class IniciarExamenService():
         else:
             print('Se recupera instrucciones de los test {} (Partes: {})'.format(idtestpsicologicos_lista, idtestpsicologicos_idparte_lista))
             return True, testpsicologico_instrucciones
-
-    def obtener_mensaje_bienvenida(self, nombre):
-        try:
-            mensaje_procesoseleccion_candidato = db.session.query(
-                                                    MensajeProcesoseleccionCandidato
-                                                ).filter(MensajeProcesoseleccionCandidato.id_mensaje == 1
-                                                ).order_by(MensajeProcesoseleccionCandidato.id_mensaje)
-        except:
-            print('Error al recuperar el mensaje de bienvenida del candidato.')
-            return False, 'Error al recuperar el mensaje de bienvenida del candidato.'
-        else:
-            print('El candidato {} va a iniciar el examen (mensaje de bienvenida)'.format(nombre))
-            if mensaje_procesoseleccion_candidato.count() > 0:
-                for mensaje in mensaje_procesoseleccion_candidato:
-                    return True, mensaje.mensaje.format(nombre)
-            return False, None
-
-    def obtener_mensaje_felicitaciones(self, nombre):
-        try:
-            mensaje_procesoseleccion_candidato = db.session.query(
-                                                    MensajeProcesoseleccionCandidato
-                                                ).filter(MensajeProcesoseleccionCandidato.id_mensaje == 2
-                                                ).order_by(MensajeProcesoseleccionCandidato.id_mensaje)
-        except:
-            print('Error al recuperar el mensaje de felicitaciones del candidato.')
-            return False, 'Error al recuperar el mensaje de felicitaciones del candidato.'
-        else:
-            print('El candidato {} ha finalizado los test psicológicos asignados'.format(nombre))
-            if mensaje_procesoseleccion_candidato.count() > 0:
-                for mensaje in mensaje_procesoseleccion_candidato:
-                    return True, mensaje.mensaje.format(nombre)
-            return False, None
 
     def obtener_preguntas_pendientes(self, idcandidato, id_testpsicologicos):
         try:
