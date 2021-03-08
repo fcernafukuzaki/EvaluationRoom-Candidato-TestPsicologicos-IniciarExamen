@@ -140,6 +140,7 @@ class IniciarExamenService():
                                             WHERE ct.idcandidato = 1
                                             )
                                         AND tp.duracion > 0
+                                        AND tp.tipoprueba NOT IN ('Preg.Abierta')
                                         AND CONCAT(ctd.idtestpsicologico, '.', ctd.idparte, '.', ctd.idpregunta) NOT IN (
                                             SELECT CONCAT(idtestpsicologico, '.', idparte, '.', idpregunta) 
                                             FROM evaluationroom.candidatotestdetalle 
@@ -176,6 +177,7 @@ class IniciarExamenService():
                                     ).distinct()
                                 ),
                                 TestPsicologicoInstrucciones.duracion > 0,
+                                TestPsicologicoInstrucciones.tipoprueba.notin_('Preg.Abierta'),
                                 func.concat(TestPsicologicoPreguntas.idtestpsicologico, '.', TestPsicologicoPreguntas.idparte, '.', TestPsicologicoPreguntas.idpregunta).notin_(
                                     db.session.query(
                                         func.concat(CandidatoTestPsicologicoDetalle.idtestpsicologico, '.', CandidatoTestPsicologicoDetalle.idparte, '.', CandidatoTestPsicologicoDetalle.idpregunta)
