@@ -47,7 +47,7 @@ class LogService():
             new_candidato_testpsicologico_log = CandidatoTestPsicologicoLog(idcandidato, idtestpsicologico, 
                                                         idparte, 
                                                         func.now(), 
-                                                        origin, host, user_agent)
+                                                        origin=origin, host=host, user_agent=user_agent)
             db.session.add(new_candidato_testpsicologico_log)
             db.session.commit()
 
