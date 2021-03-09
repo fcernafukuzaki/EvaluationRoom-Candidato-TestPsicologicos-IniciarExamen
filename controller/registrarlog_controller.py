@@ -20,5 +20,11 @@ class RegistrarLogController(Resource):
                     idtestpsicologico = request.json['idtestpsicologico']
                     idparte = request.json['idparte']
                     flag = request.json['flag']
-                    return log_service.registrar_log(email_candidato, idcandidato, idtestpsicologico, idparte, flag)
+
+                    origin = None
+                    if 'Origin' in request.headers:
+                        origin = request.headers['Origin']
+                    host = request.headers['Host']
+                    user_agent = request.headers['User-Agent']
+                    return log_service.registrar_log(email_candidato, idcandidato, idtestpsicologico, idparte, flag, origin, host, user_agent)
         return {'mensaje': 'Operación no valida.'}, 403

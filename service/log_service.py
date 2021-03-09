@@ -10,18 +10,18 @@ validar_email_candidato_service = ValidarEmailCandidatoService()
 
 class LogService():
 
-    def registrar_log(self, email_candidato, idcandidato, idtestpsicologico, idparte, flag):
+    def registrar_log(self, email_candidato, idcandidato, idtestpsicologico, idparte, flag, origin, host, user_agent):
         email_valido, idcandidato = validar_email_candidato_service.valida_email_candidato(email_candidato)
         
         if email_valido == False:
             return {'mensaje': 'No existe candidato.'}, 404
         
-        flag, mensaje = self.registrar_log_candidato(idcandidato, idtestpsicologico, idparte, flag)
+        flag, mensaje = self.registrar_log_candidato(idcandidato, idtestpsicologico, idparte, flag, origin, host, user_agent)
         if flag == False:
             return {'mensaje': mensaje}, 500
         return {'mensaje': mensaje}, 200
         
-    def registrar_log_candidato(self, idcandidato, idtestpsicologico, idparte, flag):
+    def registrar_log_candidato(self, idcandidato, idtestpsicologico, idparte, flag, origin, host, user_agent):
         ''' Si el valor del argumento flag es 'F', 
                 entonces buscar si existe registro previo y actualizar la fecha de fin
             Si el valor del argumento flag es diferente a 'F',
@@ -46,7 +46,8 @@ class LogService():
             
             new_candidato_testpsicologico_log = CandidatoTestPsicologicoLog(idcandidato, idtestpsicologico, 
                                                         idparte, 
-                                                        func.now())
+                                                        func.now(), 
+                                                        origin, host, user_agent)
             db.session.add(new_candidato_testpsicologico_log)
             db.session.commit()
 

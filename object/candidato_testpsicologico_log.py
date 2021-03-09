@@ -10,13 +10,19 @@ class CandidatoTestPsicologicoLog(db.Model):
     idparte = db.Column(db.Integer, primary_key=True)
     fechainicio = db.Column(db.DateTime(), primary_key=True)
     fechafin = db.Column(db.DateTime())
+    origin = db.Column(db.String())
+    host = db.Column(db.String())
+    user_agent = db.Column(db.String())
 
-    def __init__(self, idcandidato, idtestpsicologico, idparte, fechainicio, fechafin=None):
+    def __init__(self, idcandidato, idtestpsicologico, idparte, fechainicio, fechafin=None, origin=None, host=None, user_agent=None):
         self.idcandidato = idcandidato
         self.idtestpsicologico = idtestpsicologico
         self.idparte = idparte
         self.fechainicio = fechainicio
         self.fechafin = fechafin
+        self.origin = origin
+        self.host = host
+        self.user_agent = user_agent
 
 
 class CandidatoTestPsicologicoLogSchema(ma.Schema):
