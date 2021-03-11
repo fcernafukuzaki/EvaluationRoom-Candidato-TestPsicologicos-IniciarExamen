@@ -21,5 +21,8 @@ class RegistrarRespuestaController(Resource):
                     idparte = request.json['idparte']
                     idpregunta = request.json['idpregunta']
                     respuesta = request.json['respuesta']
-                    return registrar_respuesta_service.registrar_respuesta(email_candidato, idcandidato, idtestpsicologico, idparte, idpregunta, respuesta)
+
+                    origin, host, user_agent = autorizador_service.obtener_header(request.headers)
+                    
+                    return registrar_respuesta_service.registrar_respuesta(email_candidato, idcandidato, idtestpsicologico, idparte, idpregunta, respuesta, origin, host, user_agent)
         return {'mensaje': 'Operación no valida.'}, 403
