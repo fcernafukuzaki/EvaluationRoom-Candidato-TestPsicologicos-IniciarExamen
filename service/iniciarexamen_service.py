@@ -81,9 +81,13 @@ class IniciarExamenService():
         testpsicologicos_pendientes = db.session.query(
                                         CandidatoTestPsicologico
                                     ).filter(CandidatoTestPsicologico.idcandidato==idcandidato,
-                                        db.func.extract('year', CandidatoTestPsicologico.fechaexamen) == 1900,
-                                        db.func.extract('month', CandidatoTestPsicologico.fechaexamen) == 1,
-                                        db.func.extract('day', CandidatoTestPsicologico.fechaexamen) == 1
+                                        db.or_(
+                                            (db.and_(
+                                                db.func.extract('year', CandidatoTestPsicologico.fechaexamen) == 1900,
+                                                db.func.extract('month', CandidatoTestPsicologico.fechaexamen) == 1,
+                                                db.func.extract('day', CandidatoTestPsicologico.fechaexamen) == 1)), 
+                                            (CandidatoTestPsicologico.fechaexamen==None)
+                                        )
                                     )
 
         if testpsicologicos_pendientes.count() > 0:
