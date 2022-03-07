@@ -6,7 +6,7 @@ class ValidarEmailCandidatoService():
 
     def valida_email_candidato(self, email):
         http = urllib3.PoolManager()
-        url = 'https://api.evaluationroom.com/candidato_email_validar/'
+        url = 'https://evaluationroom-candidatoemailv.herokuapp.com/candidato_email_validar/'
         response = http.request('GET',
                                 url,
                                 headers={'Content-Type': 'application/json', 'Authorization': email},
