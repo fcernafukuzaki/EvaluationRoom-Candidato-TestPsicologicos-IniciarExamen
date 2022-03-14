@@ -3,10 +3,12 @@ from sqlalchemy import func
 from sqlalchemy import desc
 from object.candidato_testpsicologico_log import CandidatoTestPsicologicoLog, CandidatoTestPsicologicoLogSchema
 from service.validaremailcandidato_service import ValidarEmailCandidatoService
+from service.psychologicaltestinterpretacion_service import PsychologicalTestInterpretacionService
 
 candidato_testpsicologico_detalle_schema = CandidatoTestPsicologicoLogSchema()
 
 validar_email_candidato_service = ValidarEmailCandidatoService()
+psychologicaltestinterpretacion_service = PsychologicalTestInterpretacionService()
 
 class LogService():
 
@@ -24,6 +26,7 @@ class LogService():
     def registrar_log_candidato(self, idcandidato, idtestpsicologico, idparte, flag, origin, host, user_agent):
         ''' Si el valor del argumento flag es 'F', 
                 entonces buscar si existe registro previo y actualizar la fecha de fin
+                e invocar API de interpretación de resultados
             Si el valor del argumento flag es diferente a 'F',
                 entonces insertar nuevo registro con fecha de inicio
         '''
@@ -41,6 +44,11 @@ class LogService():
                     objeto_candidato_log_examen.fechafin = func.now()
 
                     db.session.commit()
+
+                    try:
+                        psychologicaltestinterpretacion_service.getinterpretacion(idcandidato)
+                    except:
+                        print('Error al interpretar los resultados del candidato {}.'.format(idcandidato))
 
                     return True, 'Actualización exitosa.'
             
