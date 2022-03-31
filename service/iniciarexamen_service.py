@@ -38,11 +38,11 @@ class IniciarExamenService():
 
         flag, testpsicologicos_pendientes = self.obtener_testpsicologicos_pendientes(idcandidato, email)
         if flag == False:
-            flag, mensaje = mensaje_procesoseleccion_candidato_service.obtener_mensaje_felicitaciones(candidato.nombre)
+            flag, mensaje_felicitaciones = mensaje_procesoseleccion_candidato_service.obtener_mensaje_felicitaciones(candidato.nombre)
             reclutador_notificado = False
             if len(lista_test_psicologicos) > 0:
                 reclutador_notificado = self.valida_lista_test_psicologicos(idcandidato, lista_test_psicologicos)
-            return {'mensaje': mensaje,
+            return {'mensaje': mensaje_felicitaciones,
                     'reclutador_notificado': reclutador_notificado}, 202
 
         testpsicologicos_lista = []
@@ -63,7 +63,8 @@ class IniciarExamenService():
             mensaje = preguntas_pendientes
             if flag is None:
                 return {'mensaje': mensaje}, 500
-            return {'mensaje': mensaje,
+            _, mensaje_felicitaciones = mensaje_procesoseleccion_candidato_service.obtener_mensaje_felicitaciones(candidato.nombre)
+            return {'mensaje': mensaje_felicitaciones,
                     'reclutador_notificado': False}, 202
         except:
             return {'mensaje': 'Error al recuperar las instrucciones de los test psicológicos.'}, 500
