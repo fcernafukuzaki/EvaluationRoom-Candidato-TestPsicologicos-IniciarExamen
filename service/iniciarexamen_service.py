@@ -10,6 +10,7 @@ from object.candidato_testpsicologicodetalle import CandidatoTestPsicologicoDeta
 from object.reclutador_notificacion import ReclutadorNotificacion
 from service.validaremailcandidato_service import ValidarEmailCandidatoService
 from service.mensaje_procesoseleccion_candidato_service import MensajeProcesoseleccionCandidatoService
+from service.log_service import LogService
 import json
 import ast
 import urllib3
@@ -19,12 +20,13 @@ candidato_testpsicologico_schema = CandidatoTestPsicologicoSchema(many=True)
 testpsicologico_instrucciones_schema = TestPsicologicoInstruccionesSchema(many=True)
 testpsicologico_preguntas_schema = TestPsicologicoPreguntasSchema(many=True)
 
+log_service = LogService()
 validar_email_candidato_service = ValidarEmailCandidatoService()
 mensaje_procesoseleccion_candidato_service = MensajeProcesoseleccionCandidatoService()
 
 class IniciarExamenService():
 
-    def iniciar_examen(self, email, lista_test_psicologicos):
+    def iniciar_examen(self, email, lista_test_psicologicos, origin, host, user_agent):
         email_valido, idcandidato = validar_email_candidato_service.valida_email_candidato(email)
         
         if email_valido == False:
@@ -42,6 +44,11 @@ class IniciarExamenService():
             reclutador_notificado = False
             if len(lista_test_psicologicos) > 0:
                 reclutador_notificado = self.valida_lista_test_psicologicos(idcandidato, lista_test_psicologicos)
+            
+            accion = f'Candidato {idcandidato} ({email}) no tiene pruebas pendientes. Mostrar mensaje de felicitaciones'
+            detalle = f'Candidato: {idcandidato} {email}. Listado de pruebas: {lista_test_psicologicos}'
+            _ = log_service.registrar_candidato_log_accion(idcandidato, accion, detalle, origin, host, user_agent)
+            
             return {'mensaje': mensaje_felicitaciones,
                     'reclutador_notificado': reclutador_notificado}, 202
 
@@ -51,10 +58,15 @@ class IniciarExamenService():
 
         flag, mensaje_bienvenida = mensaje_procesoseleccion_candidato_service.obtener_mensaje_bienvenida(candidato.nombre)
         try:
-            flag, preguntas_pendientes, testpsicologicos_instrucciones, testpsicologicos_asignados = self.obtener_preguntas_pendientes(candidato.idcandidato, testpsicologicos_lista)
+            flag, preguntas_pendientes, testpsicologicos_instrucciones, testpsicologicos_asignados, response_lista_obtener_preguntas_pendientes = self.obtener_preguntas_pendientes(candidato.idcandidato, testpsicologicos_lista)
             if flag:
                 resultado_preguntas_pendientes = preguntas_pendientes
                 resultado_testpsicologicos_instrucciones = testpsicologicos_instrucciones
+                
+                accion = f'Candidato {idcandidato} ({email}) inicia pruebas'
+                detalle = f'Candidato: {idcandidato} {email}. Listado de pruebas: {response_lista_obtener_preguntas_pendientes}'
+                _ = log_service.registrar_candidato_log_accion(idcandidato, accion, detalle, origin, host, user_agent)
+
                 return {'mensaje_bienvenida': mensaje_bienvenida, 
                         'candidato': candidato_schema.dump(candidato_info), 
                         'testpsicologicos_asignados': candidato_testpsicologico_schema.dump(testpsicologicos_asignados),
@@ -62,11 +74,24 @@ class IniciarExamenService():
                         'preguntas_pendientes': testpsicologico_preguntas_schema.dump(resultado_preguntas_pendientes) }, 200
             mensaje = preguntas_pendientes
             if flag is None:
+                accion = f'Error al iniciar examen del candidato {idcandidato} ({email})'
+                detalle = f'Mensaje: {mensaje}'
+                _ = log_service.registrar_candidato_log_accion(idcandidato, accion, detalle, origin, host, user_agent)
+                
                 return {'mensaje': mensaje}, 500
             _, mensaje_felicitaciones = mensaje_procesoseleccion_candidato_service.obtener_mensaje_felicitaciones(candidato.nombre)
+            
+            accion = f'Candidato {idcandidato} ({email}) acabó las pruebas. Mostrar mensaje de felicitaciones'
+            detalle = f'Candidato: {idcandidato} {email}. Listado de pruebas: {lista_test_psicologicos}'
+            _ = log_service.registrar_candidato_log_accion(idcandidato, accion, detalle, origin, host, user_agent)
+            
             return {'mensaje': mensaje_felicitaciones,
                     'reclutador_notificado': False}, 202
         except:
+            accion = f'Error al recuperar las instrucciones de los test psicológicos del candidato {idcandidato} ({email})'
+            detalle = f'Candidato: {idcandidato} {email}. Listado de pruebas: {lista_test_psicologicos}'
+            _ = log_service.registrar_candidato_log_accion(idcandidato, accion, detalle, origin, host, user_agent)
+            
             return {'mensaje': 'Error al recuperar las instrucciones de los test psicológicos.'}, 500
         
     def valida_autoregistro(self, email, autoregistro):
@@ -121,11 +146,13 @@ class IniciarExamenService():
                                                 ).filter(TestPsicologicoInstrucciones.idtestpsicologico.in_(idtestpsicologicos_lista)
                                                 ).order_by(TestPsicologicoInstrucciones.idtestpsicologico, TestPsicologicoInstrucciones.idparte)
         except:
-            print('Error al recuperar las instrucciones del test psicológico.')
-            return False, 'Error al recuperar las instrucciones del test psicológico.'
+            mensaje = 'Error al recuperar las instrucciones del test psicológico.'
+            print(mensaje)
+            return False, mensaje, mensaje
         else:
-            print('Se recupera instrucciones de los test {} (Partes: {})'.format(idtestpsicologicos_lista, idtestpsicologicos_idparte_lista))
-            return True, testpsicologico_instrucciones
+            mensaje = 'Se recupera instrucciones de los test {} (Partes: {})'.format(idtestpsicologicos_lista, idtestpsicologicos_idparte_lista)
+            print(mensaje)
+            return True, testpsicologico_instrucciones, mensaje
 
     def obtener_preguntas_pendientes(self, idcandidato, id_testpsicologicos):
         try:
@@ -224,7 +251,7 @@ class IniciarExamenService():
         except AssertionError as e:
             print(e)
             print('Error al recuperar las respuestas del candidato {}'.format(idcandidato))
-            return None, '', None, None
+            return None, '', None, None, None
 
         if candidato_respuestas.count() > 0:
             print('El candidato {} posee preguntas pendientes para los test {}'.format(idcandidato, id_testpsicologicos))
@@ -239,21 +266,21 @@ class IniciarExamenService():
 
             print('Lista de partes de las preguntas pendientes del candidato {}: {}'.format(idcandidato, candidato_respuestas_idtestpsicologico_idparte_lista))
             print('Lista de respuestas del candidato {}: {}'.format(idcandidato, candidato_respuestas_idtestpsicologico_idparte_lista))
-            flag, testpsicologico_instrucciones = self.obtener_instrucciones(id_testpsicologicos, candidato_respuestas_idtestpsicologico_idparte_lista)
+            flag, testpsicologico_instrucciones, mensaje_obtener_instrucciones = self.obtener_instrucciones(id_testpsicologicos, candidato_respuestas_idtestpsicologico_idparte_lista)
             if flag == False:
-                return None, 'No hay instrucciones para el test psicológico.', None, None
+                return None, 'No hay instrucciones para el test psicológico.', None, None, None
 
             try:
                 response = candidato_respuestas
             except:
                 print('Error al recuperar las preguntas del test psicológico.')
-                return None, 'Error al recuperar las preguntas del test psicológico.', None, None
+                return None, 'Error al recuperar las preguntas del test psicológico.', None, None, None
             
             else:
-                return True, response, testpsicologico_instrucciones, testpsicologicos_asignados
+                return True, response, testpsicologico_instrucciones, testpsicologicos_asignados, mensaje_obtener_instrucciones
         else:
             print('El candidato {} no tiene preguntas pendientes.'.format(idcandidato))
-            return False, 'El candidato {} no tiene preguntas pendientes.'.format(idcandidato), None, None
+            return False, 'El candidato {} no tiene preguntas pendientes.'.format(idcandidato), None, None, None
     
     def valida_lista_test_psicologicos(self, idcandidato, lista_test_psicologicos):
         try:
