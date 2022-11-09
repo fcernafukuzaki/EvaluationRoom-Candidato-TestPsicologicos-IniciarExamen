@@ -18,5 +18,6 @@ class IniciarExamenController(Resource):
             if json_dict is not None:
                 if 'lista_test_psicologicos' in json_dict:
                     lista_test_psicologicos = request.json['lista_test_psicologicos']
-            return iniciar_examen_service.iniciar_examen(email_candidato, lista_test_psicologicos)
+            origin, host, user_agent = autorizador_service.obtener_header(request.headers)
+            return iniciar_examen_service.iniciar_examen(email_candidato, lista_test_psicologicos, origin, host, user_agent)
         return {'mensaje': 'Operación no valida.'}, 403
