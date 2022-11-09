@@ -38,11 +38,11 @@ class IniciarExamenService():
 
         flag, testpsicologicos_pendientes = self.obtener_testpsicologicos_pendientes(idcandidato, email)
         if flag == False:
-            flag, mensaje = mensaje_procesoseleccion_candidato_service.obtener_mensaje_felicitaciones(candidato.nombre)
+            flag, mensaje_felicitaciones = mensaje_procesoseleccion_candidato_service.obtener_mensaje_felicitaciones(candidato.nombre)
             reclutador_notificado = False
             if len(lista_test_psicologicos) > 0:
                 reclutador_notificado = self.valida_lista_test_psicologicos(idcandidato, lista_test_psicologicos)
-            return {'mensaje': mensaje,
+            return {'mensaje': mensaje_felicitaciones,
                     'reclutador_notificado': reclutador_notificado}, 202
 
         testpsicologicos_lista = []
@@ -50,17 +50,25 @@ class IniciarExamenService():
             testpsicologicos_lista.append(test.idtestpsicologico)
 
         flag, mensaje_bienvenida = mensaje_procesoseleccion_candidato_service.obtener_mensaje_bienvenida(candidato.nombre)
-        flag, preguntas_pendientes, testpsicologicos_instrucciones, testpsicologicos_asignados = self.obtener_preguntas_pendientes(candidato.idcandidato, testpsicologicos_lista)
-        if flag:
-            resultado_preguntas_pendientes = preguntas_pendientes
-            resultado_testpsicologicos_instrucciones = testpsicologicos_instrucciones
-            return {'mensaje_bienvenida': mensaje_bienvenida, 
-                    'candidato': candidato_schema.dump(candidato_info), 
-                    'testpsicologicos_asignados': candidato_testpsicologico_schema.dump(testpsicologicos_asignados),
-                    'testpsicologicos_instrucciones': testpsicologico_instrucciones_schema.dump(resultado_testpsicologicos_instrucciones), 
-                    'preguntas_pendientes': testpsicologico_preguntas_schema.dump(resultado_preguntas_pendientes) }, 200
-        return {'mensaje': 'Error al recuperar las instrucciones de los test psicológicos.'}, 500
-
+        try:
+            flag, preguntas_pendientes, testpsicologicos_instrucciones, testpsicologicos_asignados = self.obtener_preguntas_pendientes(candidato.idcandidato, testpsicologicos_lista)
+            if flag:
+                resultado_preguntas_pendientes = preguntas_pendientes
+                resultado_testpsicologicos_instrucciones = testpsicologicos_instrucciones
+                return {'mensaje_bienvenida': mensaje_bienvenida, 
+                        'candidato': candidato_schema.dump(candidato_info), 
+                        'testpsicologicos_asignados': candidato_testpsicologico_schema.dump(testpsicologicos_asignados),
+                        'testpsicologicos_instrucciones': testpsicologico_instrucciones_schema.dump(resultado_testpsicologicos_instrucciones), 
+                        'preguntas_pendientes': testpsicologico_preguntas_schema.dump(resultado_preguntas_pendientes) }, 200
+            mensaje = preguntas_pendientes
+            if flag is None:
+                return {'mensaje': mensaje}, 500
+            _, mensaje_felicitaciones = mensaje_procesoseleccion_candidato_service.obtener_mensaje_felicitaciones(candidato.nombre)
+            return {'mensaje': mensaje_felicitaciones,
+                    'reclutador_notificado': False}, 202
+        except:
+            return {'mensaje': 'Error al recuperar las instrucciones de los test psicológicos.'}, 500
+        
     def valida_autoregistro(self, email, autoregistro):
         if autoregistro:
             print('El candidato {} se ha registrado. Debe de completar sus datos en formulario'.format(email))
@@ -216,7 +224,7 @@ class IniciarExamenService():
         except AssertionError as e:
             print(e)
             print('Error al recuperar las respuestas del candidato {}'.format(idcandidato))
-            return False, '', None, None
+            return None, '', None, None
 
         if candidato_respuestas.count() > 0:
             print('El candidato {} posee preguntas pendientes para los test {}'.format(idcandidato, id_testpsicologicos))
@@ -233,13 +241,13 @@ class IniciarExamenService():
             print('Lista de respuestas del candidato {}: {}'.format(idcandidato, candidato_respuestas_idtestpsicologico_idparte_lista))
             flag, testpsicologico_instrucciones = self.obtener_instrucciones(id_testpsicologicos, candidato_respuestas_idtestpsicologico_idparte_lista)
             if flag == False:
-                return False, 'No hay instrucciones para el test psicológico.', None, None
+                return None, 'No hay instrucciones para el test psicológico.', None, None
 
             try:
                 response = candidato_respuestas
             except:
                 print('Error al recuperar las preguntas del test psicológico.')
-                return False, 'Error al recuperar las preguntas del test psicológico.', None, None
+                return None, 'Error al recuperar las preguntas del test psicológico.', None, None
             
             else:
                 return True, response, testpsicologico_instrucciones, testpsicologicos_asignados
