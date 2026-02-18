@@ -23,6 +23,9 @@ class CandidatoLog(db.Model):
         self.user_agent = user_agent
 
 
-class CandidatoLogSchema(ma.Schema):
+class CandidatoLogSchema(ma.SQLAlchemyAutoSchema):
     class Meta:
-        fields = ('fecharegistro', 'idcandidato', 'accion', 'detalle')
+        model = CandidatoLog
+        include_fk = True
+        load_instance = True
+        #fields = ('fecharegistro', 'idcandidato', 'accion', 'detalle')
