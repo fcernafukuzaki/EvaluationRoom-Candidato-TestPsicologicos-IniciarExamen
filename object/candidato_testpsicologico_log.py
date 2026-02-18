@@ -25,6 +25,9 @@ class CandidatoTestPsicologicoLog(db.Model):
         self.user_agent = user_agent
 
 
-class CandidatoTestPsicologicoLogSchema(ma.Schema):
+class CandidatoTestPsicologicoLogSchema(ma.SQLAlchemyAutoSchema):
     class Meta:
-        fields = ('idcandidato', 'idtestpsicologico', 'idparte', 'fechainicio', 'fechafin')
+        model = CandidatoTestPsicologicoLog
+        include_fk = True
+        load_instance = True
+        #fields = ('idcandidato', 'idtestpsicologico', 'idparte', 'fechainicio', 'fechafin')
